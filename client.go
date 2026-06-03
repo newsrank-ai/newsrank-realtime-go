@@ -45,6 +45,7 @@ type Client struct {
 	onStoryDevelopment func(ctx context.Context, e *StoryDevelopmentEvent)
 	onStoryPriorityChanged func(ctx context.Context, e *StoryPriorityChangedEvent)
 	onClusterEvent func(ctx context.Context, e *ClusterEventEvent)
+	onTickerNews func(ctx context.Context, e *TickerNewsEvent)
 	onError func(ctx context.Context, e *ErrorEvent)
 }
 
@@ -276,6 +277,17 @@ func (c *Client) dispatch(ctx context.Context, data []byte) error {
 			}
 			fn(ctx, &ev)
 		}
+	case EventTickerNews:
+		c.mu.RLock()
+		fn := c.onTickerNews
+		c.mu.RUnlock()
+		if fn != nil {
+			var ev TickerNewsEvent
+			if err := json.Unmarshal(data, &ev); err != nil {
+				return fmt.Errorf("realtime: unmarshal ticker.news: %w", err)
+			}
+			fn(ctx, &ev)
+		}
 	case EventError:
 		c.mu.RLock()
 		fn := c.onError
@@ -402,6 +414,13 @@ func (c *Client) OnClusterEvent(fn func(ctx context.Context, e *ClusterEventEven
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.onClusterEvent = fn
+}
+
+// OnTickerNews registers a handler for ticker.news events.
+func (c *Client) OnTickerNews(fn func(ctx context.Context, e *TickerNewsEvent)) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.onTickerNews = fn
 }
 
 // OnError registers a handler for error events.

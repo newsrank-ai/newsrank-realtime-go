@@ -11,6 +11,7 @@ const (
 	EventStoryDevelopment = "story.development"
 	EventStoryPriorityChanged = "story.priority_changed"
 	EventClusterEvent = "cluster.event"
+	EventTickerNews = "ticker.news"
 	EventError = "error"
 	EventSubscribe = "subscribe"
 )
@@ -21,8 +22,9 @@ type SubscribeFilters struct {
 	Sources []string `json:"sources,omitempty"` // Filter by source IDs. Empty = all.
 	Keywords []string `json:"keywords,omitempty"` // Filter by keywords in article titles (case-insensitive, OR logic).
 	Keyword *string `json:"keyword,omitempty"` // Single keyword filter (legacy, prefer `keywords` array). Deprecated.
-	Topics []string `json:"topics,omitempty"` // Event topics to subscribe to. Empty = all topics.
+	Topics []string `json:"topics,omitempty"` // Event topics to subscribe to. Empty = all topics. Use "tickers" to receive all ticker.news events.
 	Entities []int64 `json:"entities,omitempty"` // Filter by entity IDs for enrichment events. Empty = no entity filter.
+	Tickers []string `json:"tickers,omitempty"` // Filter ticker.news events by symbol (e.g., "AAPL", "BTC"). Empty = no ticker filter. Requires Pro tier or higher.
 	IncludeEmbeddings *bool `json:"include_embeddings,omitempty"` // Include embedding vectors in events (Pro+ only).
 	EmbeddingFilters []EmbeddingFilter `json:"embedding_filters,omitempty"` // Semantic similarity filters (Pro+ only, max 10).
 }
@@ -67,6 +69,26 @@ type StoryDevelopmentData struct {
 	NewHeadline *string `json:"new_headline,omitempty"`
 	CreatedAtMs *int64 `json:"created_at_ms,omitempty"` // Unix milliseconds
 	EnrichmentSeq *int `json:"enrichment_seq,omitempty"` // Sequential enrichment counter
+}
+
+// ScoredTicker — A security tagged to a story with sentiment and impact scores
+type ScoredTicker struct {
+	Symbol string `json:"symbol"` // Ticker symbol (e.g., "AAPL", "VTI", "BTC")
+	AssetClass string `json:"asset_class"`
+	Sentiment string `json:"sentiment"` // Effect on the security's outlook (bullish/bearish/neutral)
+	SentimentScore float32 `json:"sentiment_score"` // -1.0 (most bearish) to 1.0 (most bullish)
+	Impact string `json:"impact"` // How consequential the news is for the security
+	ImpactScore float32 `json:"impact_score"` // 0.0 (negligible) to 1.0 (unprecedented)
+	Rationale *string `json:"rationale,omitempty"` // One-sentence explanation of the score
+	Confidence float32 `json:"confidence"` // 0.0 to 1.0 confidence the security is genuinely affected
+}
+
+// TickerNewsData — A story affecting one or more securities
+type TickerNewsData struct {
+	ClusterId int64 `json:"cluster_id"`
+	Headline string `json:"headline"`
+	Category *string `json:"category,omitempty"`
+	Tickers []ScoredTicker `json:"tickers"` // Per-security sentiment and impact scores
 }
 
 // StoryPriorityChangedData — Data about a story's priority level changing
@@ -136,6 +158,12 @@ type StoryPriorityChangedEvent struct {
 type ClusterEventEvent struct {
 	Type string `json:"type"`
 	Data ClusterEventData `json:"data"` // Cluster lifecycle event (create, merge, split, split_created)
+}
+
+// TickerNewsEvent — News tagged to one or more securities with per-ticker sentiment and impact
+type TickerNewsEvent struct {
+	Type string `json:"type"`
+	Data TickerNewsData `json:"data"` // A story affecting one or more securities
 }
 
 // ErrorEvent — An error occurred processing your request
