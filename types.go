@@ -81,6 +81,8 @@ type ScoredTicker struct {
 	ImpactScore float32 `json:"impact_score"` // 0.0 (negligible) to 1.0 (unprecedented)
 	Rationale *string `json:"rationale,omitempty"` // One-sentence explanation of the score
 	Confidence float32 `json:"confidence"` // 0.0 to 1.0 confidence the security is genuinely affected
+	PriceUsd *float64 `json:"price_usd,omitempty"` // Current price in USD. Populated for crypto (free market data); absent for equities unless a licensed price feed is enabled.
+	PriceChange24h *float64 `json:"price_change_24h,omitempty"` // 24-hour price change, percent (crypto only).
 }
 
 // TickerNewsData — A story affecting one or more securities
